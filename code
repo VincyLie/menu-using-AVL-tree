@@ -1,0 +1,346 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+struct Data{
+	char Title[55];
+	char Type[55];
+	int Stock;
+	int Price;
+	char ID[55];
+	Data *left;
+	Data *right;
+	int height;
+};
+Data *ROOT  =NULL;
+Data* Create_Node(char Title[],char Type[],int Stock, int Price,char ID[]){
+	Data* curr = (Data*)malloc(sizeof(Data));
+	strcpy(curr->Title,Title);
+	strcpy(curr->Type,Type);
+	curr->Price=Price;
+	curr->Stock=Stock;
+	strcpy(curr->ID,ID);
+	curr->height = 1;
+	curr->left = curr->right = NULL;
+	return curr;
+}
+int get_maximum(int left, int right){
+	return (left > right) ? left : right;
+}
+int get_height(Data* curr){
+	if(!curr){
+		return 0;
+	}
+	return curr->height;
+}
+int calc_height(Data* curr){
+	return get_maximum(get_height(curr->left),get_height(curr->right))+1;
+}
+int get_balance(Data*curr){
+ 	return (get_height(curr->left) - get_height(curr->right));
+}
+Data* right_rotate(Data* curr){
+	Data* pivot = curr->left;
+	Data* cut = pivot->right;
+	pivot->right = curr;
+	pivot->right->left = cut; 
+	curr->height = calc_height(curr);
+	pivot->height = calc_height(pivot);
+	return pivot; 
+}
+Data* left_rotate(Data* curr){
+	Data* pivot = curr->right;
+	Data* cut = pivot->left;
+	pivot->left = curr;
+	pivot->left->right = cut; 
+	curr->height = calc_height(curr);
+	pivot->height = calc_height(pivot);
+	return pivot;
+}
+Data* push(Data* curr, char Title[],char Type[],int Stock, int Price, char ID []){
+	if(!curr){
+		return Create_Node(Title,Type,Stock,Price,ID);
+	}
+	else if(strcmp(ID,curr->ID)<0){
+		curr->left = push(curr->left,Title,Type,Stock,Price,ID);
+	}
+	else if(strcmp(ID,curr->ID)>0){
+		curr->right = push (curr->right,Title,Type,Stock,Price,ID);
+	}
+	curr->height = calc_height(curr);
+	int bal;
+	bal = get_balance(curr);
+	if(bal > 1 && get_balance(curr->left)>=0){
+		curr = right_rotate(curr);
+	}
+	else if (bal < -1 && get_balance(curr->right)<=0){
+		curr = left_rotate(curr);
+	}
+	else if(bal > 1 && get_balance(curr->left)<0) {
+		curr->left = left_rotate(curr->left);
+		curr = right_rotate(curr);
+	}
+	else if(bal < -1 && get_balance(curr->right)<=0){
+		curr->right = right_rotate(curr->right);
+		curr = left_rotate(curr->right);
+	}
+	return curr;
+}
+void pre_order(Data *curr){
+	if(curr){
+		printf(" %-5s | %20s | %10s |    %d |  %d |\n",curr->ID,curr->Title,curr->Type,curr->Stock,curr->Price);
+		pre_order(curr->left);
+		pre_order(curr->right);
+	}
+}
+void in_order(Data *curr){
+	if(curr){
+		in_order(curr->left);
+		printf(" %-5s | %20s | %10s |    %d |  %d |\n",curr->ID,curr->Title,curr->Type,curr->Stock,curr->Price);
+		in_order(curr->right);
+	}
+}
+void post_order(Data *curr){
+	if(curr){
+		post_order(curr->left);
+		post_order(curr->right);
+		printf(" %-5s | %20s | %10s |    %d |  %d |\n",curr->ID,curr->Title,curr->Type,curr->Stock,curr->Price);
+	}
+}
+Data *pop(Data *curr,char ID[]){
+	if(strcmp(ID,curr->ID)<0){
+		curr->left = pop(curr->left,ID);
+	}
+	else if(strcmp(ID,curr->ID)>0){
+		curr->right = pop (curr->right,ID);
+	}
+	else{
+		if(!curr->right){
+			Data* topop = curr->left;
+			free(curr);
+			return topop;
+		}
+		else if(!curr->left){
+			Data* topop = curr->right;
+			free(curr);
+			return topop;
+		}
+			Data* predecessor = curr->left;
+			while(predecessor->right){
+				predecessor = predecessor ->right;
+			}
+			strcpy(curr->Title,predecessor->Title);
+			strcpy(curr->Type,predecessor->Type);
+			strcpy(curr->ID,predecessor->ID);
+			curr->Stock = predecessor->Stock;
+			curr->Price = predecessor->Price;
+			curr->left = pop(curr->left, predecessor->ID);
+	}
+	curr->height = calc_height(curr);
+	int bal;
+	bal = get_balance(curr);
+	if(bal > 1 && get_balance(curr->left)>=0){
+		curr = right_rotate(curr);
+	}
+	else if (bal < -1 && get_balance(curr->right)<=0){
+		curr = left_rotate(curr);
+	}
+
+	else if(bal > 1 && get_balance(curr->left)<0) {
+		curr->left = left_rotate(curr->left);
+		curr = right_rotate(curr);
+	}
+
+	else if(bal < -1 && get_balance(curr->right)<=0){
+		curr->right = right_rotate(curr->right);
+		curr = left_rotate(curr->right);
+	}
+	return curr;
+}
+void View(){
+	char Choose [50];
+	if(!ROOT){
+		printf("No Game in Storage!\n");
+		return;
+	}
+	do{
+		printf("Input view method [pre|in|post](case - sensitive): ");
+		scanf("%[^\n]",&Choose);
+		getchar();	
+	}while(strcmp(Choose,"pre")!=0&&strcmp(Choose,"in")!=0&&strcmp(Choose,"post")!=0);
+	printf("|    ID |               Title |      Type | Stock |   Price |\n");
+	if(strcmp(Choose,"pre")==0){
+		pre_order(ROOT);
+	}
+	else if(strcmp(Choose,"in")==0){
+		in_order(ROOT);
+	}
+	else{
+		post_order(ROOT);
+	}
+	printf("Press enter to continue . . .\n");
+	getchar();
+}
+int checkID(Data*curr,char Find[]){
+	if(curr){
+		checkID(curr->left,Find);
+		checkID(curr->right,Find);
+		if(strcmp(curr->ID,Find)==0){
+			return 0;
+		}
+	}
+	return 1; //Aman 
+}
+int Random(){
+	int a=0,b=0;
+ 	int random = rand()%2;
+ 	if(random == 0 ){
+  		b = rand() %10;
+  		b = b +'0';
+  		return b;
+ 	}
+ 	else{
+  		a = rand()%26;
+  		a = a+'A';
+  		return a;
+ 	}
+}
+void Add(){
+	char Title[55];
+	char Type[55];
+	char ID[55];
+	int Price,Stock;
+	int len,len1;
+	int a,b,c;
+	do{
+		printf("Input Game Title [3-25]: ");
+		scanf("%[^\n]",&Title);
+		len = strlen(Title);
+		getchar();
+	}while(len<3||len>25);
+	do{
+		printf("Input Game Type [Action , Strategy , Role-Playing, Simulation , Sports](case sensitive): ");
+		scanf("%[^\n]",&Type);
+		getchar();
+	}while(strcmp(Type,"Action")!=0&&strcmp(Type,"Strategy")!=0&&strcmp(Type,"Role-Playing")!=0&&strcmp(Type,"Simulation")!=0&&strcmp(Type,"Sports")!=0);
+	do{
+		printf("Input Stock [More than 1]: ");
+		scanf("%d",&Stock);
+		getchar();
+	}while(Stock<1);
+	do{
+		printf("Input Price [40.000 - 1.000.000]: ");
+		scanf("%d",&Price);
+		getchar();
+	}while(Price<40000||Price>1000000);
+	do{
+    		a = Random();
+    		b = Random();
+    		c = Random();
+    		ID[0] = 'G';
+    		ID[1] = 'A';
+    		ID[2] = a;
+    		ID[3] = b;
+    		ID[4] = c;	
+	}while(checkID(ROOT,ID)==0);
+	ROOT = push(ROOT,Title,Type,Stock,Price,ID);
+	printf("Insert Success!\n");
+	printf("Press enter to continue...\n");
+	getchar();
+}
+int Search(Data*curr,char key[]){
+	if(!curr){
+		return 0;
+	}
+	if(strcmp(curr->ID,key)==0){
+		return 1;
+	}
+	else if(strcmp(key,curr->ID)<0){
+		Search(curr->left,key);
+	}
+	else if(strcmp(key,curr->ID)>0){
+		Search(curr->right,key);
+	}
+}
+void decreaseStock(Data*curr,char key[]){
+	if(!curr){
+		return;
+	}
+	if(strcmp(curr->ID,key)==0){
+		curr->Stock = curr->Stock-1;
+		return;
+	}
+	else if(strcmp(key,curr->ID)<0){
+		Search(curr->left,key);
+	}
+	else if(strcmp(key,curr->ID)>0){
+		Search(curr->right,key);
+	}
+}
+Data* getData(Data* curr, char key[]){
+	if(!curr){
+		return NULL;
+	}
+	if(strcmp(curr->ID,key)==0){
+		return curr;
+	}
+	else if(strcmp(key,curr->ID)<0){
+		Search(curr->left,key);
+	}
+	else if(strcmp(key,curr->ID)>0){
+		Search(curr->right,key);
+	}
+}
+void Sell(Data* curr){
+	char Find[55];
+	Data* toDelete;
+	if(!ROOT){
+		printf("No Game in Storage\n");
+		printf("Press enter to continue . . .\n");
+		getchar();
+		return;
+	}
+		printf("|    ID |               Title |      Type | Stock |   Price |\n");
+	in_order(ROOT);
+	do{
+		printf("Choose ID: ");
+		scanf("%[^\n]",&Find);
+		getchar(); 
+	}while(Search(curr,Find)==0);	
+	decreaseStock(curr,Find);
+	toDelete = getData(curr,Find);
+	if(toDelete->Stock==0){
+		printf("1 Unit of %s is sold!\n",Find);
+		printf("Game Out of Stock! Deleting from list . . .\n");
+				ROOT = pop(ROOT,Find);	
+		printf("Press enter to continue ...\n");
+		getchar();
+	}else{
+		printf("1 Unit of %s is sold!\n",Find);
+		printf("Press enter to continue ...\n");
+		getchar();
+	}
+}
+int main (){
+	int input;
+	do{
+		printf("1. Insert Game\n");
+		printf("2. View Games\n");
+		printf("3. Sell Games\n");
+		printf("4. Exit\n");
+		scanf("%d",&input);
+		getchar();
+		switch(input){
+			case 1:
+				Add();
+				break;
+			case 2:
+				View();
+				break;
+			case 3:
+				Sell(ROOT);
+				break;
+			case 4:
+				break;
+		}
+	}while(input!=4);
+}
